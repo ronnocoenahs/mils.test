@@ -1,0 +1,21 @@
+{
+    "server_name": "SlimStash",
+    "language": "English",
+    "auto_scan": true,
+    "transcoder_quality": "Prefer higher quality encoding",
+    "hardware_transcoding": false,
+    "remote_access": "",
+    "secure_connections": false,
+    "media_directories": [
+        {
+            "path": "/home/slim/Movies",
+            "type": "movies"
+        },
+        {
+            "path": "/home/slim/TV",
+            "type": "tv_shows"
+        }
+    ],
+    "metadata_agent_movies": "TMDb",
+    "metadata_agent_tv": "TMDb"
+}

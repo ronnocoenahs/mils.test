@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}{{ movie.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            {% set poster_url = movie.remotePoster if movie.remotePoster else url_for('static', filename='images/placeholder.png') %}
+            <img src="{{ poster_url }}" class="img-fluid detail-poster" alt="{{ movie.title }}">
+        </div>
+        <div class="col-md-8">
+            <h1 class="display-4">{{ movie.title }} <span class="text-muted">({{ movie.year }})</span></h1>
+            <p class="lead">{{ movie.overview }}</p>
+            
+            <div class="my-4">
+                {% if movie.hasFile %}
+                    <a href="{{ url_for('player', media_type='movie', media_id=movie.id) }}" class="btn btn-success btn-lg mr-2">
+                        <i class="fas fa-play"></i> Play
+                    </a>
+                {% elif not movie.isAvailable %}
+                    <form action="{{ url_for('request_movie') }}" method="post" style="display: inline-block;">
+                        <input type="hidden" name="tmdb_id" value="{{ movie.tmdbId }}">
+                        <input type="hidden" name="title" value="{{ movie.title }}">
+                        <button type="submit" class="btn btn-primary btn-lg">Request Movie</button>
+                    </form>
+                {% else %}
+                     <button class="btn btn-secondary btn-lg" disabled>Already Requested</button>
+                {% endif %}
+            </div>
+
+            <hr style="border-top: 1px solid var(--aquamarine);">
+
+            <h5>Details</h5>
+            <ul class="list-unstyled">
+                <li><strong>Status:</strong> <span class="badge badge-info">{{ movie.status }}</span></li>
+                <li><strong>Runtime:</strong> {{ movie.runtime }} minutes</li>
+                {% if movie.genres %}
+                    <li><strong>Genres:</strong> {{ movie.genres | join(', ') }}</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

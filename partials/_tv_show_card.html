@@ -1,0 +1,8 @@
+{# templates/partials/_tv_show_card.html #}
+<a href="{{ url_for('tv_show_detail_page', show_id=show.id) }}" class="poster-card">
+    <img src="{{ show.poster or 'https://placehold.co/300x450/161d2f/e0e0e0?text=No+Poster' }}" alt="{{ show.title }} Poster">
+    <div class="info">
+        <h4 class="title">{{ show.title }}</h4>
+        <p class="year">{{ (show.release_date.split('-')[0]) if show.release_date else 'N/A' }}</p>
+    </div>
+</a>

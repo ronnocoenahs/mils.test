@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - SlimStash{% endblock %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+    <h2 class="text-4xl font-bold text-indigo-400">{{ title }}</h2>
+    <div class="flex items-center gap-4 w-full md:w-auto">
+        <!-- Search Input -->
+        <input type="text" id="searchInput" placeholder="Search {{ title.lower() }}..." class="form-input w-full md:w-64">
+        
+        <!-- Sort Dropdown -->
+        <select id="sortSelect" class="form-input">
+            <option value="title-asc">Sort by Title (A-Z)</option>
+            <option value="title-desc">Sort by Title (Z-A)</option>
+            <option value="year-desc">Sort by Year (Newest)</option>
+            <option value="year-asc">Sort by Year (Oldest)</option>
+        </select>
+    </div>
+</div>
+
+<div id="mediaGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+    {# The initial items are rendered by the server. JS will replace this content on search/sort. #}
+    {% if media_items %}
+        {% for item in media_items %}
+            {% if media_type == 'movie' %}
+                {% include 'partials/_media_card.html' with {'movie': item} %}
+            {% elif media_type == 'tv_show' %}
+                {% include 'partials/_tv_show_card.html' with {'show': item} %}
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p id="no-initial-items" class="text-gray-400 col-span-full">No {{ title.lower() }} found. Add a directory in settings and scan your library!</p>
+    {% endif %}
+</div>
+
+<!-- Loading indicator and message for dynamic content -->
+<div id="loadingIndicator" class="hidden text-center col-span-full py-10">
+    <p class="text-xl text-gray-400">Loading...</p>
+</div>
+<div id="noResultsMessage" class="hidden text-gray-400 text-center col-span-full py-10">
+    <p class="text-xl">No results found.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const mediaGrid = document.getElementById('mediaGrid');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const noResultsMessage = document.getElementById('noResultsMessage');
+    const mediaType = '{{ media_type }}'; // 'movie' or 'tv_show'
+
+    let debounceTimer;
+
+    // --- Debounce function to limit API calls while typing ---
+    function debounce(func, delay) {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(func, delay);
+    }
+
+    // --- Function to fetch data from the backend ---
+    async function fetchMedia() {
+        const searchTerm = searchInput.value;
+        const sortValue = sortSelect.value.split('-');
+        const sortBy = sortValue[0]; // 'title' or 'year'
+        const sortOrder = sortValue[1]; // 'asc' or 'desc'
+
+        // Show loading indicator and hide grid/messages
+        loadingIndicator.style.display = 'block';
+        mediaGrid.style.display = 'none';
+        noResultsMessage.style.display = 'none';
+        const initialMsg = document.getElementById('no-initial-items');
+        if(initialMsg) initialMsg.style.display = 'none';
+
+        try {
+            // NOTE: This requires a new API endpoint on the backend.
+            const response = await fetch(`/api/library/${mediaType}?search=${searchTerm}&sort_by=${sortBy}&sort_order=${sortOrder}`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            const items = await response.json();
+            renderMedia(items);
+        } catch (error) {
+            console.error('Failed to fetch media:', error);
+            mediaGrid.innerHTML = '<p class="text-red-500 col-span-full">Error loading media. Please try again.</p>';
+        } finally {
+            // Hide loading indicator and show grid
+            loadingIndicator.style.display = 'none';
+            mediaGrid.style.display = 'grid';
+        }
+    }
+
+    // --- Function to render the media items ---
+    function renderMedia(items) {
+        mediaGrid.innerHTML = ''; // Clear existing items
+
+        if (items.length === 0) {
+            noResultsMessage.style.display = 'block';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        items.forEach(item => {
+            // This requires the backend to send HTML snippets, or you can build the HTML here.
+            // For simplicity, we assume the backend sends back the rendered HTML for each card.
+            // A more robust solution would be to build the card from JSON data here.
+            const div = document.createElement('div');
+            div.innerHTML = item.html; // Assuming backend provides 'html' key
+            fragment.appendChild(div.firstChild);
+        });
+        mediaGrid.appendChild(fragment);
+    }
+
+    // --- Event Listeners ---
+    searchInput.addEventListener('input', () => {
+        debounce(fetchMedia, 300); // Wait 300ms after user stops typing
+    });
+
+    sortSelect.addEventListener('change', fetchMedia);
+});
+</script>
+{% endblock %}

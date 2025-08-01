@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - {{ config.server_name }}{% endblock %}
+
+{% block content %}
+
+{# Define the macro at the top of the block for clarity and correct usage #}
+{%- macro month_name(month_num) -%}
+    {{ ['','January','February','March','April','May','June','July','August','September','October','November','December'][month_num] }}
+{%- endmacro -%}
+
+<div class="p-4 md:p-8">
+    <h2 class="text-3xl font-bold text-white mb-8">Upcoming Releases</h2>
+
+    <div class="space-y-6">
+        {% if events %}
+            {% for event in events %}
+            <div class="bg-gray-800/50 rounded-lg p-4 flex items-center gap-4">
+                <div class="flex-shrink-0 text-center w-24">
+                    {# FIX: Correctly call the macro instead of using it as a filter #}
+                    <p class="text-sm text-blue-400 font-semibold">{{ month_name(event.release_date.split('-')[1] | int) }}</p>
+                    <p class="text-3xl font-bold text-white">{{ event.release_date.split('-')[2] }}</p>
+                    <p class="text-sm text-gray-400">{{ event.release_date.split('-')[0] }}</p>
+                </div>
+                <div class="border-l-2 border-gray-700 pl-4">
+                    <p class="font-semibold text-white text-lg">{{ event.title }}</p>
+                    <p class="text-sm text-gray-400 capitalize">{{ event.type }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-gray-400">No upcoming releases in the calendar.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# FIX: Added the missing endblock tag to correctly close the content block #}
+{% endblock %}

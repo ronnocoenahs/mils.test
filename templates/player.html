@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlimFlix Player</title>
+    <!-- Plyr CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #000;
+            overflow: hidden; /* Hide scrollbars */
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+        }
+        /* Style the video player to take the full screen */
+        :root {
+            --plyr-color-main: #5BC0BE; /* Celeste */
+            --plyr-video-background: #000;
+        }
+        .plyr--video {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <video controls crossorigin playsinline poster="">
+            <source src="{{ stream_url }}" type="video/mp4">
+        </video>
+    </div>
+
+    <!-- Plyr JS -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const player = new Plyr('video', {
+            autoplay: true,
+            settings: ['captions', 'quality', 'speed', 'loop'],
+            captions: {
+                active: true,
+                language: 'auto',
+                update: true
+            }
+        });
+        window.player = player;
+      });
+    </script>
+</body>
+</html>
+

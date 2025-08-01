@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Media Requests{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Media Requests</h1>
+
+    <!-- Search Section -->
+    <div class="card tv-season-card mb-5">
+        <div class="card-header">
+            <h3>Search for New Content</h3>
+        </div>
+        <div class="card-body">
+            <form id="search-form">
+                <div class="form-row">
+                    <div class="col-md-8">
+                        <input type="text" class="form-control" id="search-query" placeholder="Enter movie or TV show title..." required>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="search-media-type" class="form-control">
+                            <option value="movie">Movie</option>
+                            <option value="tv">TV Show</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-block">Search</button>
+                    </div>
+                </div>
+            </form>
+            <div id="search-spinner" class="text-center mt-3" style="display: none;">
+                <div class="spinner-border text-light" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+            <div id="search-results" class="mt-4"></div>
+        </div>
+    </div>
+
+    <!-- Requests Section -->
+    <div class="row">
+        <!-- Pending Requests -->
+        <div class="col-md-6">
+            <div class="card tv-season-card">
+                <div class="card-header">
+                    <h3>Pending Requests</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Movies</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for item in requests.movies.pending %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ item.title }}
+                                {% if current_user.role == 'admin' %}
+                                <form action="{{ url_for('approve_request') }}" method="post" class="ml-2">
+                                    <input type="hidden" name="title" value="{{ item.title }}">
+                                    <input type="hidden" name="media_type" value="movie">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                {% endif %}
+                            </li>
+                        {% else %}
+                            <li class="list-group-item">No pending movie requests.</li>
+                        {% endfor %}
+                    </ul>
+                    <h5 class="mt-4">TV Shows</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for item in requests.tv.pending %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ item.title }}
+                                {% if current_user.role == 'admin' %}
+                                <form action="{{ url_for('approve_request') }}" method="post" class="ml-2">
+                                    <input type="hidden" name="title" value="{{ item.title }}">
+                                    <input type="hidden" name="media_type" value="tv">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                {% endif %}
+                            </li>
+                        {% else %}
+                            <li class="list-group-item">No pending TV show requests.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Approved Requests -->
+        <div class="col-md-6">
+            <div class="card tv-season-card">
+                <div class="card-header">
+                    <h3>Approved Requests</h3>
+                </div>
+                <div class="card-body">
+                    <h5>Movies</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for item in requests.movies.approved %}
+                            <li class="list-group-item">{{ item.title }}</li>
+                        {% else %}
+                            <li class="list-group-item">No approved movie requests.</li>
+                        {% endfor %}
+                    </ul>
+                    <h5 class="mt-4">TV Shows</h5>
+                    <ul class="list-group list-group-flush">
+                        {% for item in requests.tv.approved %}
+                            <li class="list-group-item">{{ item.title }}</li>
+                        {% else %}
+                            <li class="list-group-item">No approved TV show requests.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,171 @@
+/* Emby-like theme with Yankee Blue */
+
+:root {
+    --yankee-blue: #1C2541;
+    --gunmetal: #0B132B;
+    --aquamarine: #3A506B;
+    --celeste: #5BC0BE;
+    --light-cyan: #6FFFE9;
+    --text-light: #F8F9FA;
+    --text-muted-light: #ADB5BD;
+}
+
+body {
+    background-color: var(--gunmetal);
+    color: var(--text-light);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+#wrapper {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- Sidebar --- */
+#sidebar-wrapper {
+    min-height: 100vh;
+    width: 250px;
+    background-color: var(--yankee-blue);
+    border-right: 1px solid #2a3b5e;
+    transition: margin .25s ease-out;
+}
+
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: -250px;
+}
+
+.sidebar-heading {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.2rem;
+    font-weight: 500;
+    background-color: rgba(0,0,0,0.2);
+}
+
+.sidebar-heading .navbar-brand {
+    color: var(--text-light);
+}
+
+.list-group-item {
+    background-color: var(--yankee-blue);
+    color: var(--text-muted-light);
+    border: none;
+    padding: 1rem 1.25rem;
+    font-weight: 500;
+}
+
+.list-group-item:hover, .list-group-item:focus {
+    background-color: var(--gunmetal);
+    color: var(--celeste);
+    text-decoration: none;
+}
+
+.list-group-item.active {
+    background-color: var(--gunmetal);
+    color: var(--light-cyan);
+    border-left: 4px solid var(--light-cyan);
+}
+
+/* --- Page Content --- */
+#page-content-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+.navbar {
+    background-color: var(--yankee-blue) !important;
+    border-bottom: 1px solid #2a3b5e !important;
+}
+
+#menu-toggle {
+    background-color: var(--celeste);
+    border-color: var(--celeste);
+}
+
+.form-control {
+    background-color: var(--aquamarine);
+    border-color: var(--aquamarine);
+    color: var(--text-light);
+}
+
+.form-control::placeholder {
+    color: var(--text-muted-light);
+}
+
+.btn-outline-success {
+    color: var(--celeste);
+    border-color: var(--celeste);
+}
+
+.btn-outline-success:hover {
+    background-color: var(--celeste);
+    color: var(--yankee-blue);
+}
+
+/* --- Media Cards --- */
+.card {
+    background-color: var(--yankee-blue);
+    border: 1px solid var(--aquamarine);
+    transition: transform .2s ease-in-out, box-shadow .2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.card-title {
+    color: var(--text-light);
+}
+
+.card-text {
+    color: var(--text-muted-light);
+}
+
+/* --- Detail Pages --- */
+.display-4, .lead {
+    color: var(--text-light);
+}
+
+.text-muted {
+    color: var(--text-muted-light) !important;
+}
+
+.btn-primary {
+    background-color: var(--celeste);
+    border-color: var(--celeste);
+    color: var(--yankee-blue);
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background-color: var(--light-cyan);
+    border-color: var(--light-cyan);
+}
+
+.btn-success {
+    background-color: var(--light-cyan);
+    border-color: var(--light-cyan);
+    color: var(--yankee-blue);
+    font-weight: bold;
+}
+
+.badge-info {
+    background-color: var(--aquamarine);
+    color: var(--text-light);
+}
+
+/* --- Accordion for TV Shows --- */
+.card-header {
+    background-color: var(--aquamarine);
+}
+
+.btn-link {
+    color: var(--text-light);
+    font-weight: bold;
+}
+
+.list-group-item.d-flex {
+    background-color: transparent;
+    border-bottom: 1px solid var(--aquamarine);
+}
+

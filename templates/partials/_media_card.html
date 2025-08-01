@@ -1,0 +1,8 @@
+{# templates/partials/_media_card.html #}
+<a href="{{ url_for('movie_detail_page', media_id=movie.id) }}" class="poster-card">
+    <img src="{{ movie.poster or 'https://placehold.co/300x450/161d2f/e0e0e0?text=No+Poster' }}" alt="{{ movie.title }} Poster">
+    <div class="info">
+        <h4 class="title">{{ movie.title }}</h4>
+        <p class="year">{{ movie.year or 'N/A' }}</p>
+    </div>
+</a>

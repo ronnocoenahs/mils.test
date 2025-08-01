@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container mt-4 admin-page">
+    <h1 class="mb-4">Admin Panel</h1>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Application Settings</h3>
+        </div>
+        <div class="card-body">
+            <div id="settings-notifications"></div>
+
+            <!-- Radarr Settings -->
+            <h4 class="mt-3">Radarr Settings</h4>
+            <form id="radarr-settings-form">
+                <div class="form-group">
+                    <label for="radarr_url">Radarr URL</label>
+                    <input type="text" class="form-control" id="radarr_url" name="radarr_url" value="{{ config.radarr_url }}" placeholder="http://localhost:7878">
+                </div>
+                <div class="form-group">
+                    <label for="radarr_api_key">API Key</label>
+                    <input type="text" class="form-control" id="radarr_api_key" name="radarr_api_key" value="{{ config.radarr_api_key }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Radarr Settings</button>
+            </form>
+            <hr>
+
+            <!-- Sonarr Settings -->
+            <h4 class="mt-4">Sonarr Settings</h4>
+            <form id="sonarr-settings-form">
+                <div class="form-group">
+                    <label for="sonarr_url">Sonarr URL</label>
+                    <input type="text" class="form-control" id="sonarr_url" name="sonarr_url" value="{{ config.sonarr_url }}" placeholder="http://localhost:8989">
+                </div>
+                <div class="form-group">
+                    <label for="sonarr_api_key">API Key</label>
+                    <input type="text" class="form-control" id="sonarr_api_key" name="sonarr_api_key" value="{{ config.sonarr_api_key }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Sonarr Settings</button>
+            </form>
+            <hr>
+            
+            <!-- Jackett Settings -->
+            <h4 class="mt-4">Jackett Settings</h4>
+            <form id="jackett-settings-form">
+                <div class="form-group">
+                    <label for="jackett_url">Jackett URL</label>
+                    <input type="text" class="form-control" id="jackett_url" name="jackett_url" value="{{ config.jackett_url }}" placeholder="http://localhost:9117">
+                </div>
+                <div class="form-group">
+                    <label for="jackett_api_key">API Key</label>
+                    <input type="text" class="form-control" id="jackett_api_key" name="jackett_api_key" value="{{ config.jackett_api_key }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Jackett Settings</button>
+            </form>
+            <hr>
+
+            <!-- qBittorrent Settings -->
+            <h4 class="mt-4">qBittorrent Settings</h4>
+            <form id="qbittorrent-settings-form">
+                <div class="form-group">
+                    <label for="qbittorrent_url">qBittorrent URL</label>
+                    <input type="text" class="form-control" id="qbittorrent_url" name="qbittorrent_url" value="{{ config.qbittorrent_url }}" placeholder="http://localhost:8080">
+                </div>
+                <div class="form-group">
+                    <label for="qbittorrent_user">Username</label>
+                    <input type="text" class="form-control" id="qbittorrent_user" name="qbittorrent_user" value="{{ config.qbittorrent_user }}">
+                </div>
+                <div class="form-group">
+                    <label for="qbittorrent_pass">Password</label>
+                    <input type="password" class="form-control" id="qbittorrent_pass" name="qbittorrent_pass" value="{{ config.qbittorrent_pass }}">
+                </div>
+                <button type="submit" class="btn btn-primary">Save qBittorrent Settings</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

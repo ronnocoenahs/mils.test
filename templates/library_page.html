@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ title }}</h1>
+
+<div class="row">
+    {% for item in media_items %}
+        <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+            {% set detail_url = url_for('movie_detail', movie_id=item.id) if item.type == 'movie' else url_for('tv_show_detail', series_id=item.id) %}
+            <a href="{{ detail_url }}" class="media-card">
+                <img src="{{ item.remotePoster if item.remotePoster else url_for('static', filename='images/placeholder.png') }}" alt="{{ item.title }}">
+                <div class="card-body">
+                    <h5 class="card-title">{{ item.title }}</h5>
+                    <p class="card-text">{{ item.year }}</p>
+                </div>
+            </a>
+        </div>
+    {% else %}
+        <div class="col">
+            <p>No media found in this library.</p>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+

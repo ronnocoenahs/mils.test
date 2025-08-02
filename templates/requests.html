@@ -1,113 +1,156 @@
 {% extends "base.html" %}
 
-{% block title %}Media Requests{% endblock %}
+{% block title %}Requests - SlimFlix{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Media Requests</h1>
+<div class="p-4 md:p-8" x-data="{ activeTab: 'requestMovie' }">
+    <h2 class="text-3xl font-bold text-white mb-6">Requests</h2>
 
-    <!-- Search Section -->
-    <div class="card tv-season-card mb-5">
-        <div class="card-header">
-            <h3>Search for New Content</h3>
-        </div>
-        <div class="card-body">
-            <form id="search-form">
-                <div class="form-row">
-                    <div class="col-md-8">
-                        <input type="text" class="form-control" id="search-query" placeholder="Enter movie or TV show title..." required>
-                    </div>
-                    <div class="col-md-2">
-                        <select id="search-media-type" class="form-control">
-                            <option value="movie">Movie</option>
-                            <option value="tv">TV Show</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary btn-block">Search</button>
-                    </div>
-                </div>
-            </form>
-            <div id="search-spinner" class="text-center mt-3" style="display: none;">
-                <div class="spinner-border text-light" role="status">
-                    <span class="sr-only">Loading...</span>
-                </div>
-            </div>
-            <div id="search-results" class="mt-4"></div>
-        </div>
+    <!-- Tabs Navigation -->
+    <div class="border-b border-gray-700 mb-6">
+        <nav class="flex space-x-4" aria-label="Tabs">
+            {% if current_user.is_admin() %}
+            <a href="#" @click.prevent="activeTab = 'pending'" :class="{ 'border-teal-400 text-white': activeTab === 'pending', 'border-transparent text-gray-400 hover:text-gray-200': activeTab !== 'pending' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Pending Approval</a>
+            {% endif %}
+            <a href="#" @click.prevent="activeTab = 'approved'" :class="{ 'border-teal-400 text-white': activeTab === 'approved', 'border-transparent text-gray-400 hover:text-gray-200': activeTab !== 'approved' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Approved</a>
+            <a href="#" @click.prevent="activeTab = 'requestMovie'" :class="{ 'border-teal-400 text-white': activeTab === 'requestMovie', 'border-transparent text-gray-400 hover:text-gray-200': activeTab !== 'requestMovie' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Request Movie</a>
+            <a href="#" @click.prevent="activeTab = 'requestTv'" :class="{ 'border-teal-400 text-white': activeTab === 'requestTv', 'border-transparent text-gray-400 hover:text-gray-200': activeTab !== 'requestTv' }" class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">Request TV</a>
+        </nav>
     </div>
 
-    <!-- Requests Section -->
-    <div class="row">
-        <!-- Pending Requests -->
-        <div class="col-md-6">
-            <div class="card tv-season-card">
-                <div class="card-header">
-                    <h3>Pending Requests</h3>
-                </div>
-                <div class="card-body">
-                    <h5>Movies</h5>
-                    <ul class="list-group list-group-flush">
-                        {% for item in requests.movies.pending %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ item.title }}
-                                {% if current_user.role == 'admin' %}
-                                <form action="{{ url_for('approve_request') }}" method="post" class="ml-2">
-                                    <input type="hidden" name="title" value="{{ item.title }}">
-                                    <input type="hidden" name="media_type" value="movie">
-                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                </form>
-                                {% endif %}
-                            </li>
-                        {% else %}
-                            <li class="list-group-item">No pending movie requests.</li>
-                        {% endfor %}
+    <!-- Tab Content -->
+    <div>
+        <!-- Pending Requests (Admin Only) -->
+        {% if current_user.is_admin() %}
+        <div x-show="activeTab === 'pending'" class="space-y-6">
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+                <h3 class="text-xl font-semibold text-white mb-4">Pending Movies</h3>
+                {% if requests.movies.pending %}
+                    <ul class="space-y-3">
+                    {% for item in requests.movies.pending %}
+                        <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-white">{{ item.title }}</p>
+                                <p class="text-xs text-gray-400">Requested by: {{ item.requested_by }}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <form action="{{ url_for('approve_request_route', media_type='movie', title=item.title) }}" method="post"><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm">Approve</button></form>
+                                <form action="{{ url_for('deny_request_route', media_type='movie', title=item.title) }}" method="post"><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Deny</button></form>
+                            </div>
+                        </li>
+                    {% endfor %}
                     </ul>
-                    <h5 class="mt-4">TV Shows</h5>
-                    <ul class="list-group list-group-flush">
-                        {% for item in requests.tv.pending %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ item.title }}
-                                {% if current_user.role == 'admin' %}
-                                <form action="{{ url_for('approve_request') }}" method="post" class="ml-2">
-                                    <input type="hidden" name="title" value="{{ item.title }}">
-                                    <input type="hidden" name="media_type" value="tv">
-                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                </form>
-                                {% endif %}
-                            </li>
-                        {% else %}
-                            <li class="list-group-item">No pending TV show requests.</li>
-                        {% endfor %}
+                {% else %}
+                    <p class="text-gray-400">No pending movie requests.</p>
+                {% endif %}
+            </div>
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+                <h3 class="text-xl font-semibold text-white mb-4">Pending TV Shows</h3>
+                {% if requests.tv.pending %}
+                    <ul class="space-y-3">
+                    {% for item in requests.tv.pending %}
+                        <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-white">{{ item.title }}</p>
+                                <p class="text-xs text-gray-400">Requested by: {{ item.requested_by }}</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <form action="{{ url_for('approve_request_route', media_type='tv', title=item.title) }}" method="post"><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm">Approve</button></form>
+                                <form action="{{ url_for('deny_request_route', media_type='tv', title=item.title) }}" method="post"><button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Deny</button></form>
+                            </div>
+                        </li>
+                    {% endfor %}
                     </ul>
-                </div>
+                {% else %}
+                    <p class="text-gray-400">No pending TV show requests.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Approved Requests -->
+        <div x-show="activeTab === 'approved'" class="space-y-6">
+             <div class="bg-gray-800/50 p-4 rounded-lg">
+                <h3 class="text-xl font-semibold text-white mb-4">Approved Movies</h3>
+                {% if requests.movies.approved %}
+                    <ul class="space-y-2">
+                    {% for item in requests.movies.approved %}
+                        <li class="text-gray-300">{{ item.title }}</li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-gray-400">No approved movies.</p>
+                {% endif %}
+            </div>
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+                <h3 class="text-xl font-semibold text-white mb-4">Approved TV Shows</h3>
+                {% if requests.tv.approved %}
+                    <ul class="space-y-2">
+                    {% for item in requests.tv.approved %}
+                        <li class="text-gray-300">{{ item.title }}</li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-gray-400">No approved TV shows.</p>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Approved Requests -->
-        <div class="col-md-6">
-            <div class="card tv-season-card">
-                <div class="card-header">
-                    <h3>Approved Requests</h3>
-                </div>
-                <div class="card-body">
-                    <h5>Movies</h5>
-                    <ul class="list-group list-group-flush">
-                        {% for item in requests.movies.approved %}
-                            <li class="list-group-item">{{ item.title }}</li>
-                        {% else %}
-                            <li class="list-group-item">No approved movie requests.</li>
-                        {% endfor %}
+        <!-- Request Movie -->
+        <div x-show="activeTab === 'requestMovie'">
+            <div class="bg-gray-800/50 p-4 rounded-lg" x-data="{ query: '', results: [], loading: false, searched: false, search() { if (this.query.trim().length < 3) { this.results = []; this.searched = false; return; } this.loading = true; this.searched = true; fetch('/search_prowlarr/movie?query=' + this.query).then(res => res.json()).then(data => this.results = data).finally(() => this.loading = false); } }">
+                <h3 class="text-xl font-semibold text-white mb-4">Search for a Movie to Request</h3>
+                <form @submit.prevent="search">
+                    <div class="flex space-x-2">
+                        <input type="text" x-model="query" placeholder="Enter movie title..." class="flex-grow bg-gray-700 text-white p-2 rounded-lg">
+                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Search</button>
+                    </div>
+                </form>
+                <div x-show="loading" class="mt-4 text-center">Loading...</div>
+                <div x-show="results.length > 0" class="mt-4">
+                    <ul class="space-y-2">
+                        <template x-for="result in results" :key="result.title">
+                            <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                                <span x-text="result.title"></span>
+                                <form action="{{ url_for('add_request_route') }}" method="post">
+                                    <input type="hidden" name="media_type" value="movie">
+                                    <input type="hidden" name="title" :value="result.title">
+                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">Request</button>
+                                </form>
+                            </li>
+                        </template>
                     </ul>
-                    <h5 class="mt-4">TV Shows</h5>
-                    <ul class="list-group list-group-flush">
-                        {% for item in requests.tv.approved %}
-                            <li class="list-group-item">{{ item.title }}</li>
-                        {% else %}
-                            <li class="list-group-item">No approved TV show requests.</li>
-                        {% endfor %}
+                </div>
+                <p x-show="!loading && searched && results.length === 0" class="mt-4 text-gray-400">No results found.</p>
+            </div>
+        </div>
+
+        <!-- Request TV -->
+        <div x-show="activeTab === 'requestTv'">
+            <div class="bg-gray-800/50 p-4 rounded-lg" x-data="{ query: '', results: [], loading: false, searched: false, search() { if (this.query.trim().length < 3) { this.results = []; this.searched = false; return; } this.loading = true; this.searched = true; fetch('/search_prowlarr/tv?query=' + this.query).then(res => res.json()).then(data => this.results = data).finally(() => this.loading = false); } }">
+                <h3 class="text-xl font-semibold text-white mb-4">Search for a TV Show to Request</h3>
+                <form @submit.prevent="search">
+                    <div class="flex space-x-2">
+                        <input type="text" x-model="query" placeholder="Enter TV show title..." class="flex-grow bg-gray-700 text-white p-2 rounded-lg">
+                        <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Search</button>
+                    </div>
+                </form>
+                <div x-show="loading" class="mt-4 text-center">Loading...</div>
+                <div x-show="results.length > 0" class="mt-4">
+                    <ul class="space-y-2">
+                        <template x-for="result in results" :key="result.title">
+                            <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                                <span x-text="result.title"></span>
+                                <form action="{{ url_for('add_request_route') }}" method="post">
+                                    <input type="hidden" name="media_type" value="tv">
+                                    <input type="hidden" name="title" :value="result.title">
+                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">Request</button>
+                                </form>
+                            </li>
+                        </template>
                     </ul>
                 </div>
+                 <p x-show="!loading && searched && results.length === 0" class="mt-4 text-gray-400">No results found.</p>
             </div>
         </div>
     </div>

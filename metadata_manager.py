@@ -1,71 +1,86 @@
-import arr_handler
+import requests
 import logging
-from datetime import datetime
 
-# Configure logging
+# --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_all_movies():
-    """Retrieves and formats all movies from Radarr."""
-    movies = arr_handler.get_all_movies_from_radarr()
-    # Add a 'type' field for easier template handling
-    for movie in movies:
-        movie['type'] = 'movie'
-    return movies
-
-def get_all_tv_shows():
-    """Retrieves and formats all TV shows from Sonarr."""
-    shows = arr_handler.get_all_tv_shows_from_sonarr()
-    # Add a 'type' field for easier template handling
-    for show in shows:
-        show['type'] = 'tv'
-    return shows
-
-def get_recently_added_movies(limit=10):
-    """Gets the most recently added movies from Radarr."""
-    all_movies = get_all_movies()
-    # Sort by the 'added' date, descending.
-    # The 'added' field is usually in ISO 8601 format.
+def get_tmdb_config(api_key):
+    """Fetches TMDb API configuration, primarily for image base URLs."""
+    url = f"https://api.themoviedb.org/3/configuration?api_key={api_key}"
     try:
-        sorted_movies = sorted(all_movies, key=lambda x: x.get('added', ''), reverse=True)
-        return sorted_movies[:limit]
-    except Exception as e:
-        logging.error(f"Could not sort movies by added date: {e}")
-        return all_movies[:limit] # Return unsorted slice on error
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching TMDb configuration: {e}")
+        return None
 
-def get_recently_added_tv(limit=10):
-    """Gets the most recently added TV shows from Sonarr."""
-    all_shows = get_all_tv_shows()
-    # Sort by the 'added' date, descending.
-    try:
-        sorted_shows = sorted(all_shows, key=lambda x: x.get('added', ''), reverse=True)
-        return sorted_shows[:limit]
-    except Exception as e:
-        logging.error(f"Could not sort TV shows by added date: {e}")
-        return all_shows[:limit]
-
-def search_media(query):
-    """
-    Searches for movies and TV shows in Radarr and Sonarr.
-    Note: This performs a library search, not a search for new media.
-    """
-    if not query:
+def get_popular_movies(api_key, limit=20):
+    """Fetches a list of popular movies from TMDb."""
+    if not api_key:
+        logging.warning("TMDb API key is not set. Cannot fetch popular movies.")
         return []
-        
-    all_movies = get_all_movies()
-    all_tv_shows = get_all_tv_shows()
-    
-    results = []
-    
-    # Search movies
-    for movie in all_movies:
-        if query.lower() in movie.get('title', '').lower():
-            results.append(movie)
-            
-    # Search TV shows
-    for show in all_tv_shows:
-        if query.lower() in show.get('title', '').lower():
-            results.append(show)
-            
-    return results
+    url = f"https://api.themoviedb.org/3/movie/popular?api_key={api_key}&language=en-US&page=1"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json().get('results', [])[:limit]
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching popular movies from TMDb: {e}")
+        return []
+
+def get_popular_tv_shows(api_key, limit=20):
+    """Fetches a list of popular TV shows from TMDb."""
+    if not api_key:
+        logging.warning("TMDb API key is not set. Cannot fetch popular TV shows.")
+        return []
+    url = f"https://api.themoviedb.org/3/tv/popular?api_key={api_key}&language=en-US&page=1"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json().get('results', [])[:limit]
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching popular TV shows from TMDb: {e}")
+        return []
+
+def get_movie_details(api_key, movie_id):
+    """Fetches detailed information for a specific movie."""
+    if not api_key:
+        return None
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={api_key}&language=en-US"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching details for movie ID {movie_id}: {e}")
+        return None
+
+def get_tv_show_details(api_key, tv_show_id):
+    """Fetches detailed information for a specific TV show."""
+    if not api_key:
+        return None
+    url = f"https://api.themoviedb.org/3/tv/{tv_show_id}?api_key={api_key}&language=en-US"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching details for TV show ID {tv_show_id}: {e}")
+        return None
+
+def search_media(api_key, query):
+    """Searches for both movies and TV shows on TMDb."""
+    if not api_key:
+        return []
+    url = f"https://api.themoviedb.org/3/search/multi?api_key={api_key}&language=en-US&query={query}&page=1&include_adult=false"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        # Filter out people from search results
+        results = [item for item in response.json().get('results', []) if item.get('media_type') in ['movie', 'tv']]
+        return results
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error searching TMDb for query '{query}': {e}")
+        return []
 

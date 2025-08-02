@@ -1,0 +1,31 @@
+// trackers_config.json
+[
+    {
+        "name": "MyApiTracker",
+        "base_url": "https://api.track.er/api",
+        "auth_type": "api_key",
+        "api_key": "YOUR_API_KEY_HERE",
+        "params": {
+            "apikey": "api_key",
+            "q": "query",
+            "t": "type",
+            "cat": "categories",
+            "min_seeders": "minseed"
+        }
+    },
+    {
+        "name": "MyCookieTracker",
+        "base_url": "https://cookies.tracker/search",
+        "auth_type": "cookies",
+        "auth_url": "https://cookies.tracker/login.php",
+        "login_data": {
+            "username": "your_username",
+            "password": "your_password"
+        },
+        "parser": "html",
+        "params": {
+            "query": "query",
+            "category": "category"
+        }
+    }
+]

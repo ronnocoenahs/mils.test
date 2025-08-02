@@ -1,0 +1,546 @@
+--- a/app.py
++++ b/app.py
+@@ -82,6 +82,29 @@
+                            recent_movies=get_library_movies(sort_by='added', limit=12),
+                            recent_tv=get_library_tv_shows(sort_by='added', limit=12))
+ 
++# NEW: Global Search Route
++@app.route('/search', methods=['GET'])
++@login_required
++def search():
++    query = request.args.get('query', '')
++    if not query:
++        return redirect(url_for('index'))
++
++    # Search local library
++    library_results = database.search_library(query)
++
++    # Search Jackett for available media
++    jackett_api_key = config.get('JACKETT_API_KEY')
++    jackett_movie_url = config.get('JACKETT_MOVIE_TORZNAB_URL')
++    jackett_tv_url = config.get('JACKETT_TV_TORZNAB_URL')
++    
++    jackett_results = []
++    if jackett_api_key and (jackett_movie_url or jackett_tv_url):
++        # Search for both movies and TV shows on Jackett
++        jackett_movie_results = rh.search_jackett(jackett_movie_url, jackett_api_key, query, is_tv=False)
++        jackett_tv_results = rh.search_jackett(jackett_tv_url, jackett_api_key, query, is_tv=True)
++        
++        # Enrich results with TMDB data
++        enriched_movies = rh.enrich_with_tmdb_posters(jackett_movie_results, is_tv=False)
++        enriched_tv = rh.enrich_with_tmdb_posters(jackett_tv_results, is_tv=True)
++        
++        jackett_results = enriched_movies + enriched_tv
++
++    return render_template('search_results.html', 
++                           query=query, 
++                           library_results=library_results, 
++                           jackett_results=jackett_results)
++
+ @app.route('/movies')
+ @login_required
+ def movies_library():
+@@ -105,6 +128,26 @@
+ @login_required
+ def requests_page():
+     return render_template('requests.html', requests=rh.load_requests(), config=config)
++
++# NEW: Statistics Page Route
++@app.route('/statistics')
++@login_required
++def statistics_page():
++    stats = {
++        'most_watched': database.get_most_watched_media(),
++        'library_growth': database.get_library_growth(),
++        'playback_history': database.get_playback_history()
++    }
++    return render_template('statistics.html', stats=stats)
++
++# NEW: Route to log playback events from the player
++@app.route('/log_play', methods=['POST'])
++@login_required
++def log_play():
++    data = request.json
++    media_id = data.get('media_id')
++    media_type = data.get('media_type')
++    if media_id and media_type:
++        database.log_playback(current_user.id, media_id, media_type)
++        return jsonify({'status': 'success'}), 200
++    return jsonify({'status': 'error', 'message': 'Missing media_id or media_type'}), 400
+ 
+ @app.route('/search_jackett', methods=['POST'])
+ @login_required
+@@ -174,7 +217,9 @@
+ @login_required
+ def player():
+     stream_url = request.args.get('stream_url')
+-    return render_template('player.html', stream_url=stream_url) if stream_url else ("No stream URL provided", 400)
++    media_id = request.args.get('media_id')
++    media_type = request.args.get('media_type')
++    return render_template('player.html', stream_url=stream_url, media_id=media_id, media_type=media_type) if stream_url else ("No stream URL provided", 400)
+ 
+ @app.route('/stream/<path:file_path>')
+ @login_required
+--- a/database.py
++++ b/database.py
+@@ -1,6 +1,7 @@
+ import sqlite3
+ import logging
+ from werkzeug.security import generate_password_hash
++from collections import defaultdict
+ 
+ # --- Configuration ---
+ DB_NAME = 'slimstash.db'
+@@ -74,6 +75,18 @@
+                     recommendations TEXT
+                 )
+             ''')
++            
++            # NEW: Playback History Table
++            cursor.execute('''
++                CREATE TABLE IF NOT EXISTS playback_history (
++                    id INTEGER PRIMARY KEY AUTOINCREMENT,
++                    user_id INTEGER NOT NULL,
++                    media_id TEXT NOT NULL,
++                    media_type TEXT NOT NULL,
++                    watched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++                    FOREIGN KEY (user_id) REFERENCES users (id)
++                )
++            ''')
+ 
+             # Check for and create default admin user
+             cursor.execute("SELECT id FROM users WHERE username = ?", ('admin',))
+@@ -133,3 +146,112 @@
+         conn.close()
+     return user
+ 
++# NEW: Function to search the local library
++def search_library(query):
++    """Searches for movies and TV shows in the local database."""
++    conn = get_db_connection()
++    if conn is None: return []
++    
++    results = []
++    try:
++        with conn:
++            # Search movies
++            movies = conn.execute("SELECT *, 'movie' as type FROM movies WHERE title LIKE ?", ('%' + query + '%',)).fetchall()
++            results.extend([dict(row) for row in movies])
++
++            # Search TV shows (grouped by show title)
++            tv_shows = conn.execute("SELECT *, 'tv' as type FROM tv_shows WHERE title LIKE ? GROUP BY title", ('%' + query + '%',)).fetchall()
++            results.extend([dict(row) for row in tv_shows])
++            
++    except sqlite3.Error as e:
++        logging.error(f"Error searching library: {e}")
++    finally:
++        conn.close()
++    
++    return results
++
++# --- Statistics Functions ---
++
++def log_playback(user_id, media_id, media_type):
++    """Logs a playback event."""
++    conn = get_db_connection()
++    if conn is None: return
++    try:
++        with conn:
++            conn.execute("INSERT INTO playback_history (user_id, media_id, media_type) VALUES (?, ?, ?)",
++                         (user_id, media_id, media_type))
++        logging.info(f"Logged play for user {user_id}, media {media_id}")
++    except sqlite3.Error as e:
++        logging.error(f"Error logging playback: {e}")
++    finally:
++        conn.close()
++
++def get_most_watched_media():
++    """Gets the most watched movies and TV shows."""
++    conn = get_db_connection()
++    if conn is None: return []
++    query = """
++        SELECT 
++            p.media_id, 
++            p.media_type, 
++            COUNT(p.id) as play_count,
++            COALESCE(m.title, t.title) as title,
++            COALESCE(m.poster, t.poster) as poster
++        FROM playback_history p
++        LEFT JOIN movies m ON p.media_id = m.id AND p.media_type = 'movie'
++        LEFT JOIN tv_shows t ON p.media_id = t.id AND p.media_type = 'tv'
++        WHERE title IS NOT NULL
++        GROUP BY title, poster
++        ORDER BY play_count DESC
++        LIMIT 10
++    """
++    try:
++        results = conn.execute(query).fetchall()
++        return [dict(row) for row in results]
++    except sqlite3.Error as e:
++        logging.error(f"Error getting most watched media: {e}")
++        return []
++    finally:
++        conn.close()
++
++def get_library_growth():
++    """Gets the number of media items added over time."""
++    conn = get_db_connection()
++    if conn is None: return {}
++    
++    growth_data = defaultdict(int)
++    try:
++        # Movies
++        movie_growth = conn.execute("SELECT strftime('%Y-%m', last_modified, 'unixepoch') as month, COUNT(*) as count FROM movies GROUP BY month ORDER BY month").fetchall()
++        for row in movie_growth:
++            growth_data[row['month']] += row['count']
++        
++        # TV Shows (count unique shows per month)
++        tv_growth = conn.execute("SELECT strftime('%Y-%m', last_modified, 'unixepoch') as month, COUNT(DISTINCT title) as count FROM tv_shows GROUP BY month ORDER BY month").fetchall()
++        for row in tv_growth:
++            growth_data[row['month']] += row['count']
++
++        # Sort and format for the chart
++        sorted_growth = sorted(growth_data.items())
++        return {
++            "labels": [item[0] for item in sorted_growth],
++            "data": [item[1] for item in sorted_growth]
++        }
++    except sqlite3.Error as e:
++        logging.error(f"Error getting library growth: {e}")
++        return {}
++    finally:
++        conn.close()
++
++def get_playback_history():
++    """Gets the recent playback history."""
++    conn = get_db_connection()
++    if conn is None: return []
++    query = """
++        SELECT 
++            p.watched_at,
++            u.username,
++            p.media_type,
++            COALESCE(m.title, t.title) as title,
++            t.season,
++            t.episode
++        FROM playback_history p
++        JOIN users u ON p.user_id = u.id
++        LEFT JOIN movies m ON p.media_id = m.id AND p.media_type = 'movie'
++        LEFT JOIN tv_shows t ON p.media_id = t.id AND p.media_type = 'tv'
++        WHERE title IS NOT NULL
++        ORDER BY p.watched_at DESC
++        LIMIT 20
++    """
++    try:
++        results = conn.execute(query).fetchall()
++        return [dict(row) for row in results]
++    except sqlite3.Error as e:
++        logging.error(f"Error getting playback history: {e}")
++        return []
++    finally:
++        conn.close()
+--- a/templates/base.html
++++ b/templates/base.html
+@@ -10,6 +10,8 @@
+     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+     <!-- Alpine.js for UI interactivity -->
+     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
++    <!-- Chart.js for statistics -->
++    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ </head>
+ <body class="bg-gray-900 text-gray-200" x-data="{ sidebarOpen: true }">
+ 
+@@ -23,19 +25,29 @@
+                 <a href="{{ url_for('movies_library') }}" class="nav-link text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-lg font-medium {% if 'movies' in request.endpoint %}active{% endif %}">Movies</a>
+                 <a href="{{ url_for('tv_shows_library') }}" class="nav-link text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-lg font-medium {% if 'tv_shows' in request.endpoint %}active{% endif %}">TV Shows</a>
+                 <a href="{{ url_for('requests_page') }}" class="nav-link text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-lg font-medium {% if 'requests' in request.endpoint %}active{% endif %}">Requests</a>
++                <!-- NEW: Statistics Link -->
++                <a href="{{ url_for('statistics_page') }}" class="nav-link text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-lg font-medium {% if 'statistics' in request.endpoint %}active{% endif %}">Statistics</a>
+             </nav>
+         </aside>
+ 
+         <!-- Main Content -->
+         <div class="flex-1 flex flex-col overflow-hidden">
+             <!-- Top Bar -->
+             <header class="main-content flex justify-between items-center p-4">
+-                <button @click="sidebarOpen = !sidebarOpen" class="text-gray-300 hover:text-white">
+-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+-                </button>
++                <div class="flex items-center">
++                    <button @click="sidebarOpen = !sidebarOpen" class="text-gray-300 hover:text-white mr-4">
++                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
++                    </button>
++                    <!-- NEW: Global Search Bar -->
++                    <form action="{{ url_for('search') }}" method="get" class="relative">
++                        <input type="search" name="query" placeholder="Search..." class="bg-gray-700 text-white rounded-full py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-teal-500 w-64">
++                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
++                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
++                        </div>
++                    </form>
++                </div>
+                 <div class="flex items-center space-x-4">
+                      {% if current_user.is_authenticated %}
+                         <a href="{{ url_for('admin') }}" class="text-gray-300 hover:text-white">Admin</a>
+--- a/templates/player.html
++++ b/templates/player.html
+@@ -25,23 +25,39 @@
+ </head>
+ <body>
+     <div class="container">
+-        <video controls crossorigin playsinline autoplay>
+-            <!-- The stream_url will be passed from the Flask route -->
++        <video controls crossorigin playsinline autoplay id="player">
+             <source src="{{ stream_url }}" type="video/mp4">
+-            <!-- Browsers don't natively support MKV in the <source> tag,
+-                 but Plyr.io can often handle the underlying stream if codecs are supported.
+-                 The 'type' is set to mp4 as a hint to the browser's media source extensions. -->
+         </video>
+     </div>
+ 
+     <!-- Plyr JS -->
+     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+     <script>
+       document.addEventListener('DOMContentLoaded', () => {
+-        const player = new Plyr('video', {
+-            // Plyr options can be configured here if needed
++        const player = new Plyr('#player');
++        window.player = player;
++
++        // NEW: Log playback event
++        player.on('play', () => {
++            const mediaId = "{{ media_id }}";
++            const mediaType = "{{ media_type }}";
++
++            if (mediaId && mediaType) {
++                fetch('/log_play', {
++                    method: 'POST',
++                    headers: {
++                        'Content-Type': 'application/json',
++                    },
++                    body: JSON.stringify({
++                        media_id: mediaId,
++                        media_type: mediaType
++                    })
++                })
++                .then(response => response.json())
++                .then(data => {
++                    if(data.status === 'success') {
++                        console.log('Playback logged successfully.');
++                    }
++                })
++                .catch(error => {
++                    console.error('Error logging playback:', error);
++                });
++            }
+         });
+-        window.player = player;
+       });
+     </script>
+ </body>
+--- a/templates/search_results.html
++++ b/templates/search_results.html
+@@ -1,28 +1,50 @@
+ {% extends "base.html" %}
+ 
+ {% block title %}Search Results for "{{ query }}"{% endblock %}
+ 
+ {% block content %}
+-<h1 class="mb-4">Search Results for "{{ query }}"</h1>
++<div class="p-4 md:p-8">
++    <h2 class="text-3xl font-bold text-white mb-8">Search Results for "{{ query }}"</h2>
+ 
+-<div class="row">
+-    {% for item in results %}
+-        <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+-            {% set detail_url = url_for('movie_detail', movie_id=item.id) if item.type == 'movie' else url_for('tv_show_detail', series_id=item.id) %}
+-            <a href="{{ detail_url }}" class="media-card">
+-                <img src="{{ item.remotePoster if item.remotePoster else url_for('static', filename='images/placeholder.png') }}" alt="{{ item.title }}">
+-                <div class="card-body">
+-                    <h5 class="card-title">{{ item.title }}</h5>
+-                    <p class="card-text">{{ item.year }}</p>
++    <!-- Library Results -->
++    <div class="mb-12">
++        <h3 class="text-2xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">In Your Library</h3>
++        {% if library_results %}
++            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
++                {% for item in library_results %}
++                    {% if item.type == 'movie' %}
++                        {% set detail_url = url_for('movie_detail_page', movie_id=item.id) %}
++                    {% else %}
++                        {% set detail_url = url_for('tv_show_detail_page', show_id=item.id) %}
++                    {% endif %}
++                    <a href="{{ detail_url }}" class="poster-card">
++                        <img src="{{ item.poster or 'https://placehold.co/300x450/181818/e0e0e0?text=No+Poster' }}" alt="{{ item.title }} Poster" loading="lazy">
++                        <div class="info">
++                            <h4 class="title">{{ item.title }}</h4>
++                            <p class="year">{{ (item.release_date.split('-')[0]) if item.release_date else item.year }}</p>
++                        </div>
++                    </a>
++                {% endfor %}
++            </div>
++        {% else %}
++            <p class="text-gray-400">No results found in your library.</p>
++        {% endif %}
++    </div>
++
++    <!-- Jackett Results -->
++    <div>
++        <h3 class="text-2xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">Available to Request</h3>
++        {% if jackett_results %}
++            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
++                {% for item in jackett_results %}
++                <div class="relative group poster-card">
++                    <img src="{{ item.poster or 'https://placehold.co/300x450/181818/e0e0e0?text=No+Poster' }}" alt="{{ item.title }} Poster" class="rounded-lg shadow-lg w-full h-auto object-cover">
++                    <div class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-4">
++                        <form action="{{ url_for('add_request_route') }}" method="post" class="text-center">
++                            <input type="hidden" name="media_type" value="{{ 'tv' if 'S' in item.title else 'movie' }}">
++                            <input type="hidden" name="title" value="{{ item.title }}">
++                            <p class="text-white font-semibold mb-2">{{ item.title }}</p>
++                            <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Request</button>
++                        </form>
++                    </div>
+                 </div>
+-            </a>
+-        </div>
+-    {% else %}
+-        <div class="col">
+-            <p>No results found in your library for "{{ query }}".</p>
+-        </div>
+-    {% endfor %}
++                {% endfor %}
++            </div>
++        {% else %}
++            <p class="text-gray-400">No results found from available sources.</p>
++        {% endif %}
++    </div>
+ </div>
+ {% endblock %}
+--- /dev/null
++++ b/templates/statistics.html
+@@ -0,0 +1,114 @@
++{% extends "base.html" %}
++
++{% block title %}Statistics - SlimFlix{% endblock %}
++
++{% block content %}
++<div class="p-4 md:p-8">
++    <h2 class="text-3xl font-bold text-white mb-8">Statistics</h2>
++
++    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
++        <!-- Most Watched -->
++        <div class="bg-gray-800/50 p-6 rounded-lg">
++            <h3 class="text-xl font-semibold text-teal-400 mb-4">Most Watched</h3>
++            {% if stats.most_watched %}
++                <canvas id="mostWatchedChart"></canvas>
++            {% else %}
++                <p class="text-gray-400">No playback data available yet.</p>
++            {% endif %}
++        </div>
++
++        <!-- Library Growth -->
++        <div class="bg-gray-800/50 p-6 rounded-lg">
++            <h3 class="text-xl font-semibold text-teal-400 mb-4">Library Growth</h3>
++            {% if stats.library_growth.labels %}
++                 <canvas id="libraryGrowthChart"></canvas>
++            {% else %}
++                <p class="text-gray-400">No library history found.</p>
++            {% endif %}
++        </div>
++    </div>
++
++    <!-- Playback History -->
++    <div class="mt-12">
++        <h3 class="text-2xl font-semibold text-white mb-4">Recent Playback History</h3>
++        <div class="bg-gray-800/50 rounded-lg overflow-hidden">
++            <table class="min-w-full">
++                <thead class="bg-gray-700/50">
++                    <tr>
++                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time</th>
++                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User</th>
++                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Title</th>
++                    </tr>
++                </thead>
++                <tbody class="divide-y divide-gray-700">
++                    {% for item in stats.playback_history %}
++                    <tr class="hover:bg-gray-700/50">
++                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{{ item.watched_at }}</td>
++                        <td class="px-6 py-4 whitespace-nowrap text-sm">{{ item.username }}</td>
++                        <td class="px-6 py-4 whitespace-nowrap text-sm">
++                            {{ item.title }}
++                            {% if item.media_type == 'tv' %}
++                                <span class="text-xs text-gray-400">(S{{ "%02d"|format(item.season) }}E{{ "%02d"|format(item.episode) }})</span>
++                            {% endif %}
++                        </td>
++                    </tr>
++                    {% else %}
++                    <tr>
++                        <td colspan="3" class="text-center py-4 text-gray-400">No playback history.</td>
++                    </tr>
++                    {% endfor %}
++                </tbody>
++            </table>
++        </div>
++    </div>
++</div>
++
++<script>
++document.addEventListener('DOMContentLoaded', function() {
++    // Most Watched Chart
++    const mostWatchedData = {{ stats.most_watched|tojson }};
++    if (mostWatchedData && mostWatchedData.length > 0) {
++        const ctxMostWatched = document.getElementById('mostWatchedChart').getContext('2d');
++        new Chart(ctxMostWatched, {
++            type: 'bar',
++            data: {
++                labels: mostWatchedData.map(item => item.title),
++                datasets: [{
++                    label: 'Play Count',
++                    data: mostWatchedData.map(item => item.play_count),
++                    backgroundColor: 'rgba(20, 184, 166, 0.6)',
++                    borderColor: 'rgba(13, 148, 136, 1)',
++                    borderWidth: 1
++                }]
++            },
++            options: {
++                indexAxis: 'y',
++                scales: {
++                    x: { ticks: { color: '#9CA3AF' } },
++                    y: { ticks: { color: '#9CA3AF' } }
++                },
++                plugins: { legend: { display: false } }
++            }
++        });
++    }
++
++    // Library Growth Chart
++    const libraryGrowthData = {{ stats.library_growth|tojson }};
++    if (libraryGrowthData && libraryGrowthData.labels && libraryGrowthData.labels.length > 0) {
++        const ctxLibraryGrowth = document.getElementById('libraryGrowthChart').getContext('2d');
++        new Chart(ctxLibraryGrowth, {
++            type: 'line',
++            data: {
++                labels: libraryGrowthData.labels,
++                datasets: [{
++                    label: 'Items Added',
++                    data: libraryGrowthData.data,
++                    backgroundColor: 'rgba(20, 184, 166, 0.2)',
++                    borderColor: 'rgba(13, 148, 136, 1)',
++                    borderWidth: 2,
++                    tension: 0.1,
++                    fill: true
++                }]
++            },
++            options: {
++                scales: {
++                    x: { ticks: { color: '#9CA3AF' } },
++                    y: { beginAtZero: true, ticks: { color: '#9CA3AF' } }
++                },
++                plugins: { legend: { display: false } }
++            }
++        });
++    }
++});
++</script>
++{% endblock %}
+
+

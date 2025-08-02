@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SlimFlix{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-8">
+    <h2 class="text-3xl font-bold text-white mb-8">Application Settings</h2>
+
+    <div class="bg-gray-800/50 p-6 rounded-lg max-w-3xl mx-auto">
+        <form action="{{ url_for('control_settings') }}" method="post">
+            
+            <!-- Media Directories -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">Media Directories</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="movie_dir" class="block text-gray-300 text-sm font-bold mb-2">Movie Directory:</label>
+                        <input type="text" id="movie_dir" name="movie_dir" value="{{ config.get('MOVIE_DIR', '') }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="tv_dir" class="block text-gray-300 text-sm font-bold mb-2">TV Show Directory:</label>
+                        <input type="text" id="tv_dir" name="tv_dir" value="{{ config.get('TV_DIR', '') }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TMDb Settings -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">TMDb API</h3>
+                <label for="tmdb_api_key" class="block text-gray-300 text-sm font-bold mb-2">TMDb API Key:</label>
+                <input type="text" id="tmdb_api_key" name="tmdb_api_key" value="{{ config.get('TMDB_API_KEY', '') }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+            </div>
+            
+            <!-- Prowlarr Settings -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">Prowlarr Settings</h3>
+                <div class="mb-4">
+                    <label for="prowlarr_url" class="block text-gray-300 text-sm font-bold mb-2">Prowlarr URL:</label>
+                    <input type="text" id="prowlarr_url" name="prowlarr_url" value="{{ prowlarr_conf['Prowlarr']['url'] if prowlarr_conf else '' }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                </div>
+                <div>
+                    <label for="prowlarr_api_key" class="block text-gray-300 text-sm font-bold mb-2">Prowlarr API Key:</label>
+                    <input type="text" id="prowlarr_api_key" name="prowlarr_api_key" value="{{ prowlarr_conf['Prowlarr']['api_key'] if prowlarr_conf else '' }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                </div>
+            </div>
+
+            <!-- Tracker Settings -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-teal-400 mb-4 border-b border-gray-700 pb-2">Tracker Settings</h3>
+                <div class="mb-4">
+                    <label for="btn_api_key" class="block text-gray-300 text-sm font-bold mb-2">Broadcasthe.net (BTN) API Key:</label>
+                    <input type="text" id="btn_api_key" name="btn_api_key" value="{{ btn_conf['BTN']['api_key'] if btn_conf else '' }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="ptp_api_key" class="block text-gray-300 text-sm font-bold mb-2">PassThePopcorn (PTP) API Key:</label>
+                        <input type="text" id="ptp_api_key" name="ptp_api_key" value="{{ ptp_conf['PTP']['api_key'] if ptp_conf else '' }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                    </div>
+                    <div>
+                        <label for="ptp_passkey" class="block text-gray-300 text-sm font-bold mb-2">PTP Passkey:</label>
+                        <input type="text" id="ptp_passkey" name="ptp_passkey" value="{{ ptp_conf['PTP']['passkey'] if ptp_conf else '' }}" class="w-full bg-gray-700 text-white p-3 rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg text-lg">
+                Save All Settings
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Watchlist - SlimFlix{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-8">
+    <h2 class="text-3xl font-bold text-white mb-6">My Watchlist</h2>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Movies on Watchlist -->
+        <div class="bg-gray-800/50 p-4 rounded-lg">
+            <h3 class="text-xl font-semibold text-white mb-4">Movies</h3>
+            {% if watchlist.movies %}
+                <ul class="space-y-3">
+                {% for movie in watchlist.movies %}
+                    <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                        <span class="font-semibold text-white">{{ movie.title }}</span>
+                        <form action="{{ url_for('remove_from_watchlist_route') }}" method="post">
+                            <input type="hidden" name="media_type" value="movie">
+                            <input type="hidden" name="title" value="{{ movie.title }}">
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Remove</button>
+                        </form>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-400">No movies on your watchlist.</p>
+            {% endif %}
+        </div>
+
+        <!-- TV Shows on Watchlist -->
+        <div class="bg-gray-800/50 p-4 rounded-lg">
+            <h3 class="text-xl font-semibold text-white mb-4">TV Shows</h3>
+            {% if watchlist.shows %}
+                <ul class="space-y-3">
+                {% for show in watchlist.shows %}
+                    <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                        <span class="font-semibold text-white">{{ show.title }}</span>
+                        <form action="{{ url_for('remove_from_watchlist_route') }}" method="post">
+                            <input type="hidden" name="media_type" value="show">
+                            <input type="hidden" name="title" value="{{ show.title }}">
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Remove</button>
+                        </form>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-gray-400">No TV shows on your watchlist.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

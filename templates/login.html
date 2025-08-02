@@ -4,49 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - SlimFlix</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Teko:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+        }
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #loading-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #login-container {
+            display: none; /* Initially hidden */
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        .site-title-tab {
+            font-family: 'Teko', sans-serif;
+            font-weight: 700;
+        }
+    </style>
 </head>
-<body class="login-page">
-    <div class="login-container">
-        <div class="col-md-4">
-            <div class="text-center mb-4">
-                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="SlimFlix Logo" style="height: 60px;">
-                <h1 class="mt-2">SlimFlix</h1>
+<body class="bg-gray-900">
+
+    <div id="loading-screen">
+        <video id="loading-video" muted playsinline>
+            <source src="{{ url_for('static_videos', filename='Projector_Displays_SlimFlix_Animation.mp4') }}" type="video/mp4">
+        </video>
+    </div>
+
+    <div id="login-container" class="min-h-screen flex items-center justify-center bg-gray-900">
+        <div class="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-2xl">
+            <div class="text-center mb-8">
+                <h1 class="site-title-tab text-5xl text-white">SlimFlix</h1>
             </div>
-            <div class="card">
-                <div class="card-header text-center">
-                    <h3>Login</h3>
-                </div>
-                <div class="card-body">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-danger" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
-                    <form method="post">
-                        <div class="form-group">
-                            <label for="username">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-4 mb-4 rounded-md {{ 'bg-red-500' if category == 'error' else 'bg-green-500' }} text-white">
+                            {{ message }}
                         </div>
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block">Login</button>
-                    </form>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="post">
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-300 text-sm font-bold mb-2">Username</label>
+                    <input type="text" id="username" name="username" required class="w-full bg-gray-700 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
-            </div>
+                <div class="mb-6">
+                    <label for="password" class="block text-gray-300 text-sm font-bold mb-2">Password</label>
+                    <input type="password" id="password" name="password" required class="w-full bg-gray-700 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg text-lg">Login</button>
+            </form>
+            <p class="text-center text-gray-400 mt-6">
+                Don't have an account? <a href="{{ url_for('signup') }}" class="text-teal-400 hover:underline">Sign up</a>
+            </p>
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('loading-video');
+            const loadingScreen = document.getElementById('loading-screen');
+            const loginContainer = document.getElementById('login-container');
+
+            video.play();
+
+            video.onended = function() {
+                loadingScreen.style.transition = 'opacity 1s ease-in-out';
+                loadingScreen.style.opacity = 0;
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    loginContainer.style.display = 'flex';
+                    setTimeout(() => {
+                        loginContainer.style.opacity = 1;
+                    }, 50); // Small delay to ensure display property is set before opacity transition
+                }, 1000);
+            };
+        });
+    </script>
+
 </body>
 </html>
 

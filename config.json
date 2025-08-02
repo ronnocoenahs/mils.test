@@ -1,21 +1,9 @@
 {
-    "server_name": "SlimStash",
-    "language": "English",
-    "auto_scan": true,
-    "transcoder_quality": "Prefer higher quality encoding",
-    "hardware_transcoding": false,
-    "remote_access": "",
-    "secure_connections": false,
-    "media_directories": [
-        {
-            "path": "/home/slim/Movies",
-            "type": "movies"
-        },
-        {
-            "path": "/home/slim/TV",
-            "type": "tv_shows"
-        }
-    ],
-    "metadata_agent_movies": "TMDb",
-    "metadata_agent_tv": "TMDb"
+    "TMDB_API_KEY": "3f4ae7db4be8a9b08fc3e0835f8fa33b",
+    "JACKETT_URL": "http://127.0.0.1:9117",
+    "JACKETT_API_KEY": "w857dl3avn1iuc1ejy1cykjd06ho82th",
+    "MOVIE_DIR": "/home/slim/Movies",
+    "TV_DIR": "/home/slim/TV",
+    "JACKETT_MOVIE_TORZNAB_URL": "http://127.0.0.1:9117/w857dl3avn1iuc1ejy1cykjd06ho82th/v2.0/indexers/passthepopcorn",
+    "JACKETT_TV_TORZNAB_URL": "http://127.0.0.1:9117/w857dl3avn1iuc1ejy1cykjd06ho82th/v2.0/indexers/broadcasthenet"
 }

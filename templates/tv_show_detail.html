@@ -1,83 +1,57 @@
 {% extends "base.html" %}
 
-{% block title %}{{ show.title }}{% endblock %}
+{% block title %}{{ show.title }} - SlimFlix{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-4">
-            {% set poster_url = show.remotePoster if show.remotePoster else url_for('static', filename='images/placeholder.png') %}
-            <img src="{{ poster_url }}" class="img-fluid detail-poster" alt="{{ show.title }}">
-        </div>
-        <div class="col-md-8">
-            <h1 class="display-4">{{ show.title }} <span class="text-muted">({{ show.year }})</span></h1>
-            <p class="lead">{{ show.overview }}</p>
-            
-            <div class="my-4">
-                {% if not show.added %}
-                    <form action="{{ url_for('request_tv') }}" method="post" style="display: inline-block;">
-                        <input type="hidden" name="tvdb_id" value="{{ show.tvdbId }}">
-                        <input type="hidden" name="title" value="{{ show.title }}">
-                        <button type="submit" class="btn btn-primary btn-lg">Request Show</button>
-                    </form>
-                {% else %}
-                     <button class="btn btn-secondary btn-lg" disabled>In Library</button>
-                {% endif %}
+<div class="relative">
+    <!-- Backdrop Image -->
+    <div class="h-96 bg-cover bg-center" style="background-image: linear-gradient(to bottom, rgba(17, 24, 39, 0.6), rgba(17, 24, 39, 1)), url('{{ show.backdrop_path }}');">
+    </div>
+
+    <div class="container mx-auto px-4 -mt-48">
+        <div class="flex flex-col md:flex-row">
+            <!-- Poster Image -->
+            <div class="flex-shrink-0 w-64 mx-auto md:mx-0">
+                <img src="{{ show.poster }}" alt="{{ show.title }} Poster" class="rounded-lg shadow-2xl">
             </div>
 
-            <hr style="border-top: 1px solid var(--aquamarine);">
-            <h5>Details</h5>
-            <ul class="list-unstyled">
-                <li><strong>Status:</strong> <span class="badge badge-info">{{ show.status }}</span></li>
-                <li><strong>Network:</strong> {{ show.network }}</li>
-                <li><strong>Runtime:</strong> {{ show.runtime }} minutes per episode</li>
-            </ul>
+            <!-- TV Show Details -->
+            <div class="md:ml-8 mt-8 md:mt-0 text-white flex-grow">
+                <h1 class="text-4xl font-bold">{{ show.title }}</h1>
+                
+                <div class="flex items-center my-4">
+                    <span class="text-yellow-400 font-bold text-xl mr-4">{{ (show.vote_average or 0)|round(1) }}/10</span>
+                    <span class="text-gray-400">{{ show.release_date }}</span>
+                </div>
+
+                <p class="my-4 leading-relaxed">{{ show.overview }}</p>
+
+            </div>
         </div>
     </div>
 
-    <div class="row mt-5">
-        <div class="col">
-            <h2>Seasons & Episodes</h2>
-            <div id="seasons-accordion">
-                {% for season_num, episodes in seasons.items()|sort %}
-                    <div class="card tv-season-card mb-2">
-                        <div class="card-header" id="heading-{{ season_num }}">
-                            <h5 class="mb-0">
-                                <button class="btn btn-link" data-toggle="collapse" data-target="#season-{{ season_num }}" aria-expanded="true" aria-controls="season-{{ season_num }}">
-                                    Season {{ season_num }}
-                                </button>
-                            </h5>
-                        </div>
-                
-                        <div id="season-{{ season_num }}" class="collapse {% if season_num == 1 %}show{% endif %}" aria-labelledby="heading-{{ season_num }}" data-parent="#seasons-accordion">
-                            <div class="card-body p-0">
-                                <ul class="list-group list-group-flush">
-                                    {% for episode in episodes %}
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>E{{ episode.episodeNumber }}: {{ episode.title }}</strong>
-                                                <br>
-                                                <small class="text-muted">Air Date: {{ episode.airDate if episode.airDate else 'N/A' }}</small>
-                                            </div>
-                                            <span>
-                                                {% if episode.hasFile %}
-                                                    <a href="{{ url_for('player', media_type='episode', media_id=episode.id) }}" class="btn btn-success btn-sm">
-                                                        <i class="fas fa-play"></i> Play
-                                                    </a>
-                                                {% else %}
-                                                    <span class="badge badge-secondary">Not Available</span>
-                                                {% endif %}
-                                            </span>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
+    <!-- Seasons and Episodes -->
+    <div class="container mx-auto px-4 mt-12">
+        <h2 class="text-3xl font-bold text-white mb-6">Seasons</h2>
+        <div class="space-y-4">
+            {% for season_num, episodes in show.seasons.items()|sort %}
+                <details class="bg-gray-800 p-4 rounded-lg" {% if loop.first %}open{% endif %}>
+                    <summary class="font-semibold text-xl text-teal-400 cursor-pointer">
+                        Season {{ season_num }}
+                    </summary>
+                    <ul class="mt-4 space-y-2">
+                        {% for episode in episodes %}
+                        <li class="bg-gray-700/50 p-3 rounded-md flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-white">E{{ episode.episode }}: {{ episode.episode_title }}</p>
+                                <p class="text-sm text-gray-400 mt-1">{{ episode.episode_overview }}</p>
                             </div>
-                        </div>
-                    </div>
-                {% else %}
-                    <p>No episode information available.</p>
-                {% endfor %}
-            </div>
+                            <a href="{{ url_for('stream_media', file_path=episode.path) }}" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-1 px-3 rounded text-sm flex-shrink-0 ml-4">Play</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            {% endfor %}
         </div>
     </div>
 </div>
